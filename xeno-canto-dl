@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Mar  8 17:40:57 2019
+
+@author: KarlBirkir
+This is some pretty nasty looking code in some places, 
+but I hope it's useful and saves you some minutes.
+
+"""
+
+import urllib.request, json, math
+
+#countries = ["iceland", "norway", "france"]
+countries = ["iceland","norway"]
+# nums of recordings to dl per country, leave 0 for all available, try 10 or 15 to test
+numDls = 10 
+# rate of print messages during dl            
+alertRate = 2
+
+#%%
+for country in countries: 
+    print("Downloading country: " + country)
+    server = "https://www.xeno-canto.org/api/2/recordings?query=cnt:"
+    pageUrl = "&page="
+    countryUrl = server + country
+    
+    recordings = []
+  
+ # Checks to see if there are more than one pages 
+    with urllib.request.urlopen(countryUrl) as url:
+        data = json.loads(url.read().decode())
+        numRecordings = data['numRecordings']
+        numPages = math.ceil(int(data['numRecordings']) / 500)
+            
+        print("number of available recordings from " + country + " : %d " % int(data['numRecordings']))
+    
+    del(data)   
+    
+    for page in range(1,numPages+1):
+        countryUrl = server + country + pageUrl + str(page)
+        dataBuf = json.loads(urllib.request.urlopen(countryUrl).read().decode())
+        recordings += dataBuf['recordings']
+    
+    del(dataBuf)
+
+  #   &page=5
+    
+    names=[]
+    filePaths=[]
+    
+    for i in range(len(recordings)):
+        names.append(recordings[i]["en"])
+        filePaths.append("http:" + recordings[i]["file"])
+
+#    print("number of recordings downloaded from " + country + " : " + str(len(recordings)))
+#    print("number of names: " + str(len(names)))
+    print("number of possible files to download: " + str(len(filePaths)))
+    if(numDls != 0):
+        print("but only downloading : " + str(numDls))
+
+#%%
+#downloada file
+    if(numDls == 0):
+        numDls = len(recordings)
+
+    for dlUrl in range(numDls):
+        if(dlUrl % alertRate == 0):
+            print("downloading nr : " + str(dlUrl))
+        usock = urllib.request.urlopen(filePaths[dlUrl])                                  #function for opening desired url
+        filenameStart = filePaths[dlUrl].find("/", 23)                                #Example : for given url "www.cs.berkeley.edu/~vazirani/algorithms/chap6.pdf" file_name will store "chap6.pdf"
+        filenameEnd = filePaths[dlUrl].find("/", 28)
+        file_name = filePaths[dlUrl][filenameStart+1:filenameEnd]
+        f = open(file_name + ".mp3", 'wb')                                     #opening file for write and that too in binary mode.
+     
+        downloaded = 0
+        block_size = 8192                                            #bytes to be downloaded in each loop till file pointer does not return eof
+        while True:
+            buff = usock.read(block_size)
+            if not buff:                                             #file pointer reached the eof
+                break
+            f.write(buff)
+        f.close()
+
+print("Finished")
+#%%
+        
+# print(filePaths[0])
+# filenameStart = filePaths[0].find("/", 23)
+# filenameEnd = filePaths[0].find("/", 28)
+# file_name = filePaths[0][filenameStart+1:filenameEnd]
+# print(file_name)
